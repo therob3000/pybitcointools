@@ -1,15 +1,34 @@
 from bitcoin.main import *
 import hmac
 import hashlib
-from binascii import hexlify
+
 # Electrum wallets
 
+
+def bin_electrum_extract_seed(phrase, password=''):
+    """Takes Electrum v2.0 13 word mnemonic string and returns seed. Only works on English for now"""
+    # clean-up words
+    if isinstance(phrase, list):
+        mnemonic = ' '.split(phrase)
+    elif isinstance(phrase, string_types):
+        try:
+            mnemonic = ' '.join(phrase.lower().strip().split())
+        except Exception as e:
+                raise Exception(str(e))
+    else:
+        raise TypeError
+    mnemonic, password = [x if isinstance(x, bytes) else from_string_to_bytes(x, 'utf-8') for x in (phrase, password)]
+    rootseed = pbkdf_two(mnemonic, (b'electrum' + password), 2048, 64, digestmod=hashlib.sha512)
+    assert len(rootseed) == 64
+    return rootseed
+
+def electrum_extract_mprivkey(mnemonic, password=''):
+    return bip32_master_key(bin_electrum_extract_seed(mnemonic, password=''))
 
 def electrum_stretch(seed):
     return slowsha(seed)
 
 # Accepts seed or stretched seed, returns master public key
-
 
 def electrum_mpk(seed):
     if len(seed) == 32:
@@ -51,8 +70,6 @@ def electrum_address(masterkey, n, for_change=0, version=0):
 # Given a master public key, a private key from that wallet and its index,
 # cracks the secret exponent which can be used to generate all other private
 # keys in the wallet
-
-
 def crack_electrum_wallet(mpk, pk, n, for_change=0):
     bin_mpk = encode_pubkey(mpk, 'bin_electrum')
     offset = dbl_sha256(str(n)+':'+str(for_change)+':'+bin_mpk)
@@ -67,7 +84,6 @@ PRIVATE = [MAINNET_PRIVATE, TESTNET_PRIVATE]
 PUBLIC = [MAINNET_PUBLIC, TESTNET_PUBLIC]
 
 # BIP32 child key derivation
-
 
 def raw_bip32_ckd(rawtuple, i):
     vbytes, depth, fingerprint, oldi, chaincode, key = rawtuple
@@ -147,8 +163,6 @@ def bip32_extract_key(data):
 # Exploits the same vulnerability as above in Electrum wallets
 # Takes a BIP32 pubkey and one of the child privkeys of its corresponding
 # privkey and returns the BIP32 privkey associated with that pubkey
-
-
 def raw_crack_bip32_privkey(parent_pub, priv):
     vbytes, depth, fingerprint, i, chaincode, key = priv
     pvbytes, pdepth, pfingerprint, pi, pchaincode, pkey = parent_pub
