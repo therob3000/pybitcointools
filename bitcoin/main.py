@@ -594,4 +594,4 @@ def pbkdf_two(password, salt, iters, keylen, digestmod):
         i += 1
     return key[:keylen]
 
-pbkdf2 = pbkdf_two()
+pbkdf_two = pbkdf2
