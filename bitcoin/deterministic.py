@@ -1,5 +1,3 @@
-from bitcoin.py2specials import *
-from bitcoin.py3specials import *
 from bitcoin.main import *
 import hmac
 import hashlib
