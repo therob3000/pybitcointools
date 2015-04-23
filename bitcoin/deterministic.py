@@ -1,12 +1,11 @@
 from bitcoin.main import *
 import hmac
 import hashlib
+
 # Electrum wallets
 
-
-def bin_electrum_extract_seed(phrase, password=''):
-    """Takes Electrum v2.0 13 word mnemonic string and returns seed. Only works on English for now"""
-    # clean-up words
+# Takes Electrum v2.0 13 word mnemonic string and returns seed. Only works on English for now
+def electrum_bin_extract_seed(phrase, password=''):
     if isinstance(phrase, list):
         mnemonic = ' '.split(phrase)
     elif isinstance(phrase, string_types):
@@ -16,13 +15,16 @@ def bin_electrum_extract_seed(phrase, password=''):
                 raise Exception(str(e))
     else:
         raise TypeError
-    mnemonic, password = [x if isinstance(x, bytes) else from_string_to_bytes(x, 'utf-8') for x in (phrase, password)]
+    mnemonic, password = map(from_string_to_bytes, (phrase, password))
     rootseed = pbkdf_two(mnemonic, (b'electrum' + password), 2048, 64, digestmod=hashlib.sha512)
     assert len(rootseed) == 64
     return rootseed
 
-def electrum_extract_mprivkey(mnemonic, password=''):
-    return bip32_master_key(bin_electrum_extract_seed(mnemonic, password=''))
+def electrum_extract_seed(phrase, password=''):
+    return safe_hexlify(electrum_bin_extract_seed(phrase, password=''))
+
+def electrum_get_mprivkey(mnemonic, password=''):
+    return bip32_master_key(electrum_bin_extract_seed(mnemonic, password=''))
 
 def electrum_stretch(seed):
     return slowsha(seed)
